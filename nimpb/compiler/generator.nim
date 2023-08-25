@@ -984,8 +984,9 @@ iterator genSizeOfMessageProc(msg: Message): string =
         elif isRepeated(field):
             if isNumeric(field):
                 yield indent(&"if {check}:", 4)
-                yield indent(&"result = result + sizeOfTag({field.number}, WireType.LengthDelimited)", 8)
-                yield indent(&"result = result + sizeOfLengthDelimited(packedFieldSize(message.{field.name}, {field.fieldTypeStr}))", 8)
+                yield indent(&"for value in message.{field.name}:", 8)
+                yield indent(&"result = result + sizeOfTag({field.number}, {field.wiretypeStr})", 12)
+                yield indent(&"result = result + {field.sizeOfProc}(value)", 12)
             else:
                 yield indent(&"for value in message.{field.name}:", 4)
                 yield indent(&"result = result + sizeOfTag({field.number}, {field.wiretypeStr})", 8)
