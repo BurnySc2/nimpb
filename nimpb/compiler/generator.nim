@@ -694,6 +694,27 @@ iterator genNewMessageProc(msg: Message): string =
         yield indent(&"result.{oneof.name} = {msg.names}_{oneof.name}_OneOf(kind: {msg.names}_{oneof.name}_Kind.NotSet)", 4)
     yield ""
 
+iterator genEchoProc(msg: Message): string =
+    yield &"proc `$`*(message: {msg.names}): string ="
+    yield indent("runnableExamples:", 4)
+    yield indent(&"echo ${msg.names}", 8)
+    yield indent(&"echo fmt\"{{{msg.names}}}\"", 8)
+    yield indent(&"echo &\"{{{msg.names}}}\"", 8)
+    # Collect all fields, but only echo them if they are given
+    yield indent("var resultSeq: seq[string]", 4)
+    for field in msg.fields:
+        if field.oneof == nil:
+            yield indent(&"if message.has{field.accessor}:", 4)
+            yield indent(&"resultSeq.add(&\"{field.accessor}: {{message.{field.accessor}}}\")", 8)
+    # Specific handling of 'oneof' fields
+    for oneof in msg.oneofs:
+        for field in oneof.fields:
+            yield indent(&"if message.has{field.name}:", 4)
+            yield indent(&"resultSeq.add(&\"{field.name}: {{message.{field.name}}}\")", 8)
+    yield indent("result = resultSeq.join(\", \")", 4)
+    yield indent(&"result = &\"{msg.names}({{result}})\"", 4)
+    yield ""
+
 iterator oneofSiblings(field: Field): Field =
     if field.oneof != nil:
         for sibling in field.oneof.fields:
@@ -1169,6 +1190,8 @@ iterator genProcs(msg: Message): string =
 
             for line in genFieldAccessorProcs(msg, field): yield line
 
+        for line in genEchoProc(msg): yield line
+
         for line in genSizeOfMessageProc(msg): yield line
         for line in genWriteMessageProc(msg): yield line
         for line in genReadMessageProc(msg): yield line
@@ -1245,6 +1268,7 @@ proc processFile(fdesc: google_protobuf_FileDescriptorProto,
     addLine(pbFile.data, "import base64")
     addLine(pbFile.data, "import intsets")
     addLine(pbFile.data, "import json")
+    addLine(pbFile.data, "import strformat")
     addLine(pbFile.data, "import strutils")
     if hasMaps:
         addLine(pbFile.data, "import tables")
